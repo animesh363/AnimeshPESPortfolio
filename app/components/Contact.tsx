@@ -35,13 +35,16 @@ export default function Contact() {
     const [status, setStatus] = useState<Status>('idle');
     const [errText, setErrText] = useState('Something went wrong — please try again.');
 
+    // Temporary console log to check `.env.local` bindings
+    console.log('EJ keys:', EJ_SERVICE_ID, EJ_TEMPLATE_ID, EJ_PUBLIC_KEY);
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!formRef.current) return;
 
         const fd = new FormData(formRef.current);
-        const name = (fd.get('from_name') as string)?.trim();
-        const email = (fd.get('from_email') as string)?.trim();
+        const name = (fd.get('name') as string)?.trim();
+        const email = (fd.get('email') as string)?.trim();
         const message = (fd.get('message') as string)?.trim();
 
         if (!name || !email || !/\S+@\S+\.\S+/.test(email) || !message) {
@@ -50,15 +53,22 @@ export default function Contact() {
             return;
         }
 
+        if (!EJ_SERVICE_ID || !EJ_TEMPLATE_ID || !EJ_PUBLIC_KEY) {
+            setErrText('Server config missing: Please restart your Next.js development server so it can load the new .env.local keys.');
+            setStatus('error');
+            return;
+        }
+
         setStatus('sending');
         try {
-            await emailjs.sendForm(EJ_SERVICE_ID, EJ_TEMPLATE_ID, formRef.current, EJ_PUBLIC_KEY);
+            await emailjs.sendForm(EJ_SERVICE_ID, EJ_TEMPLATE_ID, formRef.current, {
+                publicKey: EJ_PUBLIC_KEY,
+            });
             setStatus('success');
             formRef.current.reset();
         } catch (err: any) {
             console.error('EmailJS Error:', err);
-            // EmailJS usually throws an object with a `text` property, or a standard Error
-            const errorMessage = err?.text || err?.message || 'Something went wrong — please try again.';
+            const errorMessage = err?.text || err?.message || 'Empty response from EmailJS (Check your Service/Template IDs).';
             setErrText(`Error: ${errorMessage}`);
             setStatus('error');
         }
@@ -103,8 +113,8 @@ export default function Contact() {
                         onSubmit={handleSubmit}
                         noValidate
                     >
-                        <div className="reveal reveal-up"><Field id="cf-name" label="Name" name="from_name" type="input" placeholder="Your name" /></div>
-                        <div className="reveal reveal-up"><Field id="cf-email" label="Email" name="from_email" type="input" placeholder="your@email.com" inputType="email" /></div>
+                        <div className="reveal reveal-up"><Field id="cf-name" label="Name" name="name" type="input" placeholder="Your name" /></div>
+                        <div className="reveal reveal-up"><Field id="cf-email" label="Email" name="email" type="input" placeholder="your@email.com" inputType="email" /></div>
                         <div className="reveal reveal-up"><Field id="cf-message" label="Message" name="message" type="textarea" placeholder="Tell me what you're working on…" /></div>
 
                         <div className="reveal reveal-up">
